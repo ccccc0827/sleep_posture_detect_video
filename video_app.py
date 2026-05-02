@@ -102,6 +102,7 @@ class AppState:
         self.duration = 0.0
         self.alarm = False
         self.last_alarm_time = 0.0
+        self.alarm_sound_played = False
 
 shared_state = AppState()
 
@@ -134,7 +135,28 @@ def classify_posture(results):
                 current_posture = "仰躺"
 
     return current_posture
+    
+def play_alarm_sound(audio_path="assets/alarm.mp3"):
+    """
+    Play alarm sound in Streamlit using HTML audio autoplay.
+    Browser may require prior user interaction before autoplay is allowed.
+    """
+    audio_file = Path(audio_path)
 
+    if not audio_file.exists():
+        st.warning("⚠️ 找不到警鈴音效檔：assets/alarm.mp3")
+        return
+
+    audio_bytes = audio_file.read_bytes()
+    audio_base64 = base64.b64encode(audio_bytes).decode()
+
+    audio_html = f"""
+    <audio autoplay>
+        <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+    </audio>
+    """
+
+    st.markdown(audio_html, unsafe_allow_html=True)
 # =========================
 # Sidebar
 # =========================
@@ -152,7 +174,7 @@ show_live_info = st.sidebar.checkbox("顯示即時狀態資訊", value=True)
 
 st.sidebar.markdown("---")
 st.sidebar.info("建議先用 webcam 測試：維持相同姿勢超過 10 秒即觸發警報。")
-
+st_autorefresh(interval=1000, key="alarm_refresh")
 # =========================
 # Video processor
 # =========================
@@ -173,6 +195,7 @@ class PoseVideoProcessor:
                 shared_state.start_time = now
                 shared_state.duration = 0.0
                 shared_state.alarm = False
+                shared_state.alarm_sound_played = False
 
             if shared_state.duration >= alarm_threshold and current_posture != "無人躺著":
                 shared_state.alarm = True
@@ -296,6 +319,14 @@ with right_col:
             """,
             unsafe_allow_html=True
         )
+    
+        with shared_state.lock:
+            should_play_alarm = not shared_state.alarm_sound_played
+            if should_play_alarm:
+                shared_state.alarm_sound_played = True
+    
+        if should_play_alarm:
+            play_alarm_sound("assets/alarm.mp3")
     else:
         st.markdown(
             """
