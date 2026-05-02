@@ -4,3 +4,4 @@ ultralytics
 opencv-python-headless
 av
 numpy
+pandas
