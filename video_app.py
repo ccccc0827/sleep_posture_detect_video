@@ -9,6 +9,7 @@ from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import base64
 from pathlib import Path
 from streamlit_autorefresh import st_autorefresh
+import streamlit.components.v1 as components
 
 # =========================
 # Page config
@@ -103,6 +104,7 @@ class AppState:
         self.alarm = False
         self.last_alarm_time = 0.0
         self.alarm_sound_played = False
+        self.last_sound_time = 0.0
 
 if "shared_state" not in st.session_state:
     st.session_state.shared_state = AppState()
@@ -141,25 +143,30 @@ def classify_posture(results):
     
 def play_alarm_sound(audio_path="alarm.mp3"):
     """
-    Play alarm sound in Streamlit using HTML audio autoplay.
-    Browser may require prior user interaction before autoplay is allowed.
+    使用 JavaScript 播放警鈴。
+    比單純 <audio autoplay> 更容易觸發。
     """
-    audio_file = Path(audio_path)
+    audio_file = Path(__file__).parent / audio_path
 
     if not audio_file.exists():
-        st.warning("⚠️ 找不到警鈴音效檔：assets/alarm.mp3")
+        st.warning(f"⚠️ 找不到警鈴音效檔：{audio_path}")
         return
 
     audio_bytes = audio_file.read_bytes()
     audio_base64 = base64.b64encode(audio_bytes).decode()
 
-    audio_html = f"""
-    <audio autoplay>
-        <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
-    </audio>
-    """
-
-    st.markdown(audio_html, unsafe_allow_html=True)
+    components.html(
+        f"""
+        <script>
+        const audio = new Audio("data:audio/mp3;base64,{audio_base64}");
+        audio.volume = 1.0;
+        audio.play().catch(function(error) {{
+            console.log("Audio autoplay was blocked:", error);
+        }});
+        </script>
+        """,
+        height=0,
+    )
 # =========================
 # Sidebar
 # =========================
@@ -323,13 +330,16 @@ with right_col:
             unsafe_allow_html=True
         )
     
-        with shared_state.lock:
-            should_play_alarm = not shared_state.alarm_sound_played
+       with shared_state.lock:
+            now = time.time()
+            should_play_alarm = now - shared_state.last_sound_time >= 3
+    
             if should_play_alarm:
-                shared_state.alarm_sound_played = True
+                shared_state.last_sound_time = now
     
         if should_play_alarm:
             play_alarm_sound("alarm.mp3")
+   
     
     else:
         st.markdown(
