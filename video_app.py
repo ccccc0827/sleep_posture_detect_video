@@ -105,17 +105,19 @@ class AppState:
         self.last_alarm_time = 0.0
         self.alarm_sound_played = False
         self.last_sound_time = 0.0
+        self.alarm_acknowledged = False
 
 if "shared_state" not in st.session_state:
     st.session_state.shared_state = AppState()
 
+
 shared_state = st.session_state.shared_state
 
-# ✅ 補上新版 AppState 需要的欄位
-# 避免 Streamlit 保留舊 session 時，找不到 last_sound_time
 if not hasattr(shared_state, "last_sound_time"):
     shared_state.last_sound_time = 0.0
 
+if not hasattr(shared_state, "alarm_acknowledged"):
+    shared_state.alarm_acknowledged = False
 
 
 # =========================
@@ -213,12 +215,17 @@ class PoseVideoProcessor:
                 shared_state.duration = 0.0
                 shared_state.alarm = False
                 shared_state.alarm_sound_played = False
+                shared_state.alarm_acknowledged = False
 
-            if shared_state.duration >= alarm_threshold and current_posture != "無人躺著":
+            if (
+                shared_state.duration >= alarm_threshold
+                and current_posture != "無人躺著"
+                and not shared_state.alarm_acknowledged
+            ):
                 shared_state.alarm = True
                 shared_state.last_alarm_time = now
             else:
-                if current_posture == "無人躺著":
+                if current_posture == "無人躺著" or shared_state.alarm_acknowledged:
                     shared_state.alarm = False
 
             shared_state.current_posture = current_posture
@@ -337,23 +344,22 @@ with right_col:
             unsafe_allow_html=True
         )
     
+        if st.button("✅ 確認此資訊", type="primary"):
+            with shared_state.lock:
+                shared_state.alarm_acknowledged = True
+                shared_state.alarm = False
+                shared_state.last_sound_time = time.time()
+            st.rerun()
+    
         with shared_state.lock:
             now = time.time()
-            should_play_alarm = now - shared_state.last_sound_time >= 3
+            should_play_alarm = (
+                not shared_state.alarm_acknowledged
+                and now - shared_state.last_sound_time >= 3
+            )
     
             if should_play_alarm:
                 shared_state.last_sound_time = now
     
         if should_play_alarm:
             play_alarm_sound("alarm.mp3")
-   
-    
-    else:
-        st.markdown(
-            """
-            <div class="normal-box">
-                ✅ 目前未偵測到長時間固定姿勢警報。
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
