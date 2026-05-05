@@ -327,6 +327,7 @@ with right_col:
     
         if should_play_alarm:
             play_alarm_sound("assets/alarm.mp3")
+    
     else:
         st.markdown(
             """
@@ -336,10 +337,3 @@ with right_col:
             """,
             unsafe_allow_html=True
         )
-
-    if show_live_info:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.subheader("4. 即時監測說明")
-        st.write(f"- 目前姿勢：**{posture_now}**")
-        st.write(f"- 已持續：**{duration_now} 秒**")
-        st.write(f"- 警報門檻：**{alarm_threshold} 秒**")
