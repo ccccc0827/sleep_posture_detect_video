@@ -104,7 +104,10 @@ class AppState:
         self.last_alarm_time = 0.0
         self.alarm_sound_played = False
 
-shared_state = AppState()
+if "shared_state" not in st.session_state:
+    st.session_state.shared_state = AppState()
+
+shared_state = st.session_state.shared_state
 
 # =========================
 # Helper functions
@@ -136,7 +139,7 @@ def classify_posture(results):
 
     return current_posture
     
-def play_alarm_sound(audio_path="assets/alarm.mp3"):
+def play_alarm_sound(audio_path="alarm.mp3"):
     """
     Play alarm sound in Streamlit using HTML audio autoplay.
     Browser may require prior user interaction before autoplay is allowed.
@@ -326,7 +329,7 @@ with right_col:
                 shared_state.alarm_sound_played = True
     
         if should_play_alarm:
-            play_alarm_sound("assets/alarm.mp3")
+            play_alarm_sound("alarm.mp3")
     
     else:
         st.markdown(
