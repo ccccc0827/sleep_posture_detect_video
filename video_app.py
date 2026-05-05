@@ -119,6 +119,9 @@ if not hasattr(shared_state, "last_sound_time"):
 if not hasattr(shared_state, "alarm_acknowledged"):
     shared_state.alarm_acknowledged = False
 
+if "sound_enabled" not in st.session_state:
+    st.session_state.sound_enabled = False
+
 
 # =========================
 # Helper functions
@@ -150,11 +153,14 @@ def classify_posture(results):
 
     return current_posture
     
-def play_alarm_sound(audio_path="alarm.mp3"):
+def render_loop_alarm(audio_path="alarm.mp3", alarm_on=False):
     """
-    使用 JavaScript 播放警鈴。
-    比單純 <audio autoplay> 更容易觸發。
+    警報開啟時，持續播放 loop 音效。
+    警報關閉時，不渲染 audio，聲音就會停止。
     """
+    if not alarm_on:
+        return
+
     audio_file = Path(__file__).parent / audio_path
 
     if not audio_file.exists():
@@ -166,15 +172,20 @@ def play_alarm_sound(audio_path="alarm.mp3"):
 
     components.html(
         f"""
+        <audio id="alarm-audio" autoplay loop controls style="width: 100%;">
+            <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+        </audio>
+
         <script>
-        const audio = new Audio("data:audio/mp3;base64,{audio_base64}");
+        const audio = document.getElementById("alarm-audio");
         audio.volume = 1.0;
+
         audio.play().catch(function(error) {{
             console.log("Audio autoplay was blocked:", error);
         }});
         </script>
         """,
-        height=0,
+        height=60,
     )
 # =========================
 # Sidebar
@@ -190,6 +201,10 @@ alarm_threshold = st.sidebar.slider(
 )
 
 show_live_info = st.sidebar.checkbox("顯示即時狀態資訊", value=True)
+
+if st.sidebar.button("🔊 啟用警報聲"):
+    st.session_state.sound_enabled = True
+    st.sidebar.success("警報聲已啟用")
 
 st.sidebar.markdown("---")
 st.sidebar.info("建議先用 webcam 測試：維持相同姿勢超過 10 秒即觸發警報。")
@@ -351,15 +366,7 @@ with right_col:
                 shared_state.last_sound_time = time.time()
             st.rerun()
     
-        with shared_state.lock:
-            now = time.time()
-            should_play_alarm = (
-                not shared_state.alarm_acknowledged
-                and now - shared_state.last_sound_time >= 3
-            )
-    
-            if should_play_alarm:
-                shared_state.last_sound_time = now
-    
-        if should_play_alarm:
-            play_alarm_sound("alarm.mp3")
+        if st.session_state.sound_enabled:
+            render_loop_alarm("alarm.mp3", alarm_on=True)
+        else:
+            st.warning("🔇 請先按左側「啟用警報聲」，瀏覽器才比較可能允許播放聲音。")
