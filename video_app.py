@@ -111,6 +111,13 @@ if "shared_state" not in st.session_state:
 
 shared_state = st.session_state.shared_state
 
+# ✅ 補上新版 AppState 需要的欄位
+# 避免 Streamlit 保留舊 session 時，找不到 last_sound_time
+if not hasattr(shared_state, "last_sound_time"):
+    shared_state.last_sound_time = 0.0
+
+
+
 # =========================
 # Helper functions
 # =========================
