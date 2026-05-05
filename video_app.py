@@ -330,7 +330,7 @@ with right_col:
             unsafe_allow_html=True
         )
     
-       with shared_state.lock:
+        with shared_state.lock:
             now = time.time()
             should_play_alarm = now - shared_state.last_sound_time >= 3
     
