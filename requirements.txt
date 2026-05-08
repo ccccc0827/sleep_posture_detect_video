@@ -6,4 +6,3 @@ opencv-python-headless
 av
 numpy
 pandas
-tornado
